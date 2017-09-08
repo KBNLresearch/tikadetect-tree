@@ -22,9 +22,6 @@ tikaServerURL=http://localhost:9998/
 # Defines no. of seconds script waits to allow the Tika server to initialise   
 sleepValue=3
 
-# Installation directory
-instDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
 # **************
 # I/O
 # **************
