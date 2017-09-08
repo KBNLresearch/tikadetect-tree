@@ -23,9 +23,6 @@ tikaServerURL=http://localhost:9998/
 # Defines no. of seconds script waits to allow the Tika server to initialise   
 sleepValue=3
 
-# Installation directory
-instDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
 # **************
 # I/O
 # **************
@@ -102,8 +99,6 @@ start=`date +%s`
 while IFS= read -d $'\0' -r file ; do
     # Submit file to Tika server
     mimeTypeTika=$(curl -X PUT --data-binary @"$file" "$tikaServerURL"detect/stream/ 2>> $tikaDetectErr)
-    #mimeTypeFile=$(file -F ',' --mime-type "$file" 2>> $fileErr) | cut -d':' -f2 | cut -d " " -f 2
-    #outFile=$(file --mime-type "$file" 2>> $fileErr)
     mimeTypeFile=$(file --mime-type "$file" | cut -d':' -f2 | cut -d' ' -f2 2>> $fileErr)
     echo $file,$mimeTypeTika,$mimeTypeFile >> $outFile
 done < <(find $rootDir -type f -print0)
