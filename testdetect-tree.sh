@@ -88,7 +88,7 @@ sleep $sleepValue
 echo "Processing directory tree ..."
 
 # Write header fields to output file 
-echo fileName,mimeTypeTika,mimeTypeFile > $outFile
+echo fileName,mimeTypeTika,mimeTypeFile,matchTika,matchFile,mimeTypesIdentical > $outFile
 
 # Record start time
 start=`date +%s`
@@ -100,13 +100,36 @@ while IFS= read -d $'\0' -r file ; do
     # Submit file to Tika server
     mimeTypeTika=$(curl -X PUT --data-binary @"$file" "$tikaServerURL"detect/stream/ 2>> $tikaDetectErr)
     mimeTypeFile=$(file --mime-type "$file" | cut -d':' -f2 | cut -d' ' -f2 2>> $fileErr)
-    echo $file,$mimeTypeTika,$mimeTypeFile >> $outFile
+
+    if [ "$mimeTypeTika" == "application/octet-stream" ]
+    then
+        matchTika=0
+    else
+        matchTika=1
+    fi
+    
+    if [ "$mimeTypeFile" == "application/octet-stream" ]
+    then
+        matchFile=0
+    else
+        matchFile=1
+    fi
+
+    if [ "$mimeTypeTika" == "$mimeTypeFile" ]
+    then
+        mimeTypesIdentical=1
+    else
+        mimeTypesIdentical=0
+    fi
+    
+    echo $file,$mimeTypeTika,$mimeTypeFile,$matchTika,$matchFile,$mimeTypesIdentical >> $outFile
 done < <(find $rootDir -type f -print0)
  
 # Record end time
 end=`date +%s`
 
 runtime=$((end-start))
+
 echo "Running time for processing directory tree:" $runtime "seconds"
 
 # Kill Tika server process
