@@ -97,8 +97,11 @@ start=`date +%s`
 # http://stackoverflow.com/questions/7039130/bash-iterate-over-list-of-files-with-spaces/7039579#7039579
 
 while IFS= read -d $'\0' -r file ; do
+    # File basename (used as filename hint by Tika in -H option)
+    # In production workflow bName could be read from metadata, in case actual file doesn't have original name/extension 
+    bName=$(basename "$file")
     # Submit file to Tika server
-    mimeTypeTika=$(curl -X PUT --data-binary @"$file" "$tikaServerURL"detect/stream/ 2>> $tikaDetectErr)
+    mimeTypeTika=$(curl -H "Content-Disposition: attachment; filename=$bName" -X PUT --upload-file "$file" "$tikaServerURL"detect/stream 2>> $tikaDetectErr)
     mimeTypeFile=$(file --mime-type "$file" | cut -d':' -f2 | cut -d' ' -f2 2>> $fileErr)
 
     if [ "$mimeTypeTika" == "application/octet-stream" ]
