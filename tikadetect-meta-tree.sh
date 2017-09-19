@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Identify format of each file in directory tree with Apache Tika, using the Tika server.
+# If imetype indicates, PDF extract version number using Tika's parser interface
 # Works also for file and directory names that contain spaces.
 #
 # Dependencies:
@@ -15,7 +16,7 @@
 
 # Location of Tika server Jar
 tikaServerJar=~/tika/tika-server-1.16.jar
-#tikaServerJar=~/tika-src/tika/tika-server/target/tika-server-1.17-SNAPSHOT.jar
+tikaServerJar=~/tika-src/tika/tika-server/target/tika-server-1.17-SNAPSHOT.jar
 
 # Server URL
 tikaServerURL=http://localhost:9998/
@@ -28,8 +29,8 @@ sleepValue=3
 # **************
 
 # Check command line args
-if [ "$#" -ne 2 ] ; then
-  echo "Usage: tikadetect-tree.sh rootDirectory outputFile" >&2
+if [ "$#" -ne 3 ] ; then
+  echo "Usage: tikadetect-tree.sh rootDirectory outMimeTypes outMeta" >&2
   exit 1
 fi
 
@@ -41,16 +42,23 @@ fi
 # Root directory
 rootDir="$1"
 
-# Output file
-outFile="$2"
+# Mimetype output file
+outFileMime="$2"
+
+# metadata output file
+outFileMeta="$3"
 
 # File to store stderr output for tika server and detect process
 tikaServerErr=tika-server.stderr
 tikaDetectErr=tika-detect.stderr
 
 # Delete output file if it exists already
-if [ -f $outFile ] ; then
-  rm $outFile
+if [ -f $outFileMime ] ; then
+  rm $outFileMime
+fi
+
+if [ -f $outFileMeta ] ; then
+  rm $outFileMeta
 fi
 
 # Delete tika server stderr file if it exists already
@@ -91,7 +99,14 @@ while IFS= read -d $'\0' -r file ; do
     bName=$(basename "$file")
     # Submit file to Tika server, using bName as filename hint
     mimeType=$(curl -H "Content-Disposition: inline; filename=$bName" -X PUT --upload-file "$file" "$tikaServerURL"detect/stream 2>> $tikaDetectErr)
-    echo $file,$mimeType >> $outFile
+    echo $file,$mimeType >> $outFileMime
+    
+    if [ "$mimeType" == "application/pdf" ]
+    then
+        pdfVersion=$(curl -T "$file" "$tikaServerURL"meta/pdf:PDFVersion 2>> $tikaDetectErr)
+        echo $file,"$pdfVersion" >> $outFileMeta
+    fi
+    
 done < <(find $rootDir -type f -print0)
  
 # Record end time
