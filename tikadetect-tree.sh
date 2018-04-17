@@ -14,8 +14,7 @@
 # **************
 
 # Location of Tika server Jar
-tikaServerJar=~/tika/tika-server-1.16.jar
-#tikaServerJar=~/tika-src/tika/tika-server/target/tika-server-1.17-SNAPSHOT.jar
+tikaServerJar=~/tika/tika-server-1.17.jar
 
 # Server URL
 tikaServerURL=http://localhost:9998/
@@ -28,8 +27,8 @@ sleepValue=3
 # **************
 
 # Check command line args
-if [ "$#" -ne 2 ] ; then
-  echo "Usage: tikadetect-tree.sh rootDirectory outputFile" >&2
+if [ "$#" -ne 3 ] ; then
+  echo "Usage: tikadetect-tree.sh rootDirectory outputFile countFile" >&2
   exit 1
 fi
 
@@ -44,13 +43,20 @@ rootDir="$1"
 # Output file
 outFile="$2"
 
+# Count file
+countFile="$3"
+
 # File to store stderr output for tika server and detect process
 tikaServerErr=tika-server.stderr
 tikaDetectErr=tika-detect.stderr
 
-# Delete output file if it exists already
+# Delete output file and count file if it exists already
 if [ -f $outFile ] ; then
   rm $outFile
+fi
+
+if [ -f $countFile ] ; then
+  rm $countFile
 fi
 
 # Delete tika server stderr file if it exists already
@@ -93,13 +99,16 @@ while IFS= read -d $'\0' -r file ; do
     mimeType=$(curl -H "Content-Disposition: inline; filename=$bName" -X PUT --upload-file "$file" "$tikaServerURL"detect/stream 2>> $tikaDetectErr)
     echo $file,$mimeType >> $outFile
 done < <(find $rootDir -type f -print0)
- 
+
+# Count occurrences of each unique MimeType
+awk -F "\"*,\"*" '{print $2}' $outFile | sort | uniq -c > $countFile
+
 # Record end time
 end=`date +%s`
 
 runtime=$((end-start))
 echo "Running time for processing directory tree:" $runtime "seconds"
 
-# Kill Tika server process
-kill $Tika_PID
+# Terminate Tika server
+fuser -k 9998/tcp
 
